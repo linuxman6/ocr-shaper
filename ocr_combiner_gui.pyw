@@ -39,10 +39,18 @@ def process_ndlocr_json(target_folder, output_name):
     full_text_blocks = []
     current_paragraph = ""
 
+    # 文末と判定する記号
     sentence_endings = (
         '。', '！', '？', '!', '?', 
         '」', '』', '】', '）', '〕', '〉', '》', '］', '＞',
         '㳃', '㴴', '㵵', 'ゝ', 'ゞ', '々'
+    )
+
+    # 🎯 行頭の全角スペース挿入をパス（スキップ）したい記号のリスト
+    skip_indent_chars = (
+        '「', '『', '（', '(',  # 鉤括弧、二重鉤括弧、全角・半角丸括弧
+        '【', '〔', '［', '[',  # その他の一般的な括弧類
+        '〈', '《'
     )
 
     for file_path in json_files:
@@ -74,7 +82,8 @@ def process_ndlocr_json(target_folder, output_name):
                     current_paragraph += text
                     
                     if text.endswith(sentence_endings):
-                        if not current_paragraph.startswith('　'):
+                        # 🎯 修正1: 既にスペースがあるか、指定の記号で始まる場合はスペースを入れない
+                        if not current_paragraph.startswith('　') and not current_paragraph.startswith(skip_indent_chars):
                             current_paragraph = '　' + current_paragraph
                         full_text_blocks.append(current_paragraph)
                         current_paragraph = ""
@@ -83,7 +92,8 @@ def process_ndlocr_json(target_folder, output_name):
             return False, f"エラー発生 ({os.path.basename(file_path)}): {str(e)}"
 
     if current_paragraph:
-        if not current_paragraph.startswith('　'):
+        # 🎯 修正2: ループ外の残りテキストに対しても同様の判定を行う
+        if not current_paragraph.startswith('　') and not current_paragraph.startswith(skip_indent_chars):
             current_paragraph = '　' + current_paragraph
         full_text_blocks.append(current_paragraph)
 
@@ -94,6 +104,7 @@ def process_ndlocr_json(target_folder, output_name):
         return True, "成功"
     except Exception as e:
         return False, f"保存エラー: {str(e)}"
+
 
 # --- GUIクラスの定義 ---
 class OcrBatchCombinerApp:
